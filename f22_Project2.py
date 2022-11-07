@@ -25,7 +25,39 @@ def get_listings_from_search_results(html_file):
         ('Loft in Mission District', 210, '1944564'),  # example
     ]
     """
-    pass
+    tup_list = []
+    with open(html_file, 'r' ) as f:
+        contents = f.read()
+    soup = BeautifulSoup(contents, 'html.parser')
+    listing_list = soup.find_all('div', class_ = "c1l1h97y dir dir-ltr")
+        
+
+        
+    for listing in listing_list:
+        name_div = listing.find('div', class_="t1jojoys dir dir-ltr")
+        name = name_div.text
+        cost_div = listing.find('span', class_="a8jt5op dir dir-ltr")
+        cost = cost_div.text
+        regex = r'\$(\d+)'
+        new_cost = re.findall(regex, cost)
+        int_cost = int(new_cost[0])
+        url_meta = listing.find('meta', itemprop="url")
+        url = url_meta["content"]
+        regex = r'www.airbnb.com\/[\/A-Za-z]+(\d+)'
+        old_listing_id = re.findall(regex, url)
+        listing_id = old_listing_id[0]
+        temp = (name, int_cost, listing_id)
+        tup_list.append(temp)
+    return tup_list
+
+            
+
+
+
+        
+
+
+
 
 
 def get_listing_information(listing_id):
@@ -52,7 +84,53 @@ def get_listing_information(listing_id):
         number of bedrooms
     )
     """
-    pass
+
+    file_name = f"html_files/listing_{listing_id}.html"
+    with open(file_name, 'r') as f:
+        contents = f.read()
+    soup = BeautifulSoup(contents, 'html.parser')
+    listed_list = soup.find_all('li', class_="f19phm7j dir dir-ltr")
+    policy_number_span = listed_list[0].find_all('span')
+    policy_number = policy_number_span[0].text
+    regex_pending = r"[Pp]ending"
+    regex_exempt = r"[Ee]xempt"
+
+    if re.search(regex_pending, policy_number):
+        policy_number = "Pending"
+    elif re.search(regex_exempt, policy_number):
+        policy_number = "Exempt"
+
+    place_type_h2 = soup.find_all('h2', class_="_14i3z6h")[0].text
+    regex_private = r"[pP]rivate"
+    regex_shared = r"[sS]hared"
+    place_type = ""
+    if re.search(regex_private, place_type_h2):
+        place_type = "Private Room"
+    elif re.search(regex_shared, place_type_h2): 
+        place_type = "Shared Room"
+    else:
+        place_type = "Entire Room"
+
+    num_bedrooms_li = soup.find_all('li', class_="l7n4lsf dir dir-ltr")[1]
+    num_bedrooms_span = num_bedrooms_li.find_all('span')[2]
+    regex_num_bedrooms = r"\d+"
+    regex_studio = r"[sS]tudio"
+    if re.search(regex_studio, num_bedrooms_span.text):
+        num_bedrooms = 1
+    else:
+        num_bedrooms = int(re.findall(regex_num_bedrooms, num_bedrooms_span.text)[0])
+    
+       
+    
+
+    return (policy_number, place_type, num_bedrooms)
+        
+
+
+
+
+
+    
 
 
 def get_detailed_listing_database(html_file):
@@ -62,14 +140,23 @@ def get_detailed_listing_database(html_file):
     This function takes in a variable representing the location of the search results html file.
     The return value should be in this format:
 
-
+    
     [
         (Listing Title 1,Cost 1,Listing ID 1,Policy Number 1,Place Type 1,Number of Bedrooms 1),
         (Listing Title 2,Cost 2,Listing ID 2,Policy Number 2,Place Type 2,Number of Bedrooms 2),
         ...
     ]
     """
-    pass
+    detailed_list = []
+
+    listings_list = get_listings_from_search_results(html_file)
+
+    for listing in listings_list:
+        listing_details = get_listing_information(listing[2])
+        temp_listing = (listing[0], listing[1], listing[2], listing_details[0], listing_details[1], listing_details[2])
+        detailed_list.append(temp_listing)
+    return detailed_list
+
 
 
 def write_csv(data, filename):
@@ -94,7 +181,13 @@ def write_csv(data, filename):
 
     This function should not return anything.
     """
-    pass
+    new_list = sorted(data, key = lambda x: x[1])
+    header = ['Listing Title','Cost','Listing ID','Policy Number','Place Type','Number of Bedrooms']
+    with open(filename, 'w', newline='') as csvfile:
+        tuplewriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+        tuplewriter.writerow(header)
+        for tuple in new_list: 
+            tuplewriter.writerow(tuple)
 
 
 def check_policy_numbers(data):
@@ -115,8 +208,20 @@ def check_policy_numbers(data):
         ...
     ]
 
+
     """
-    pass
+    listing_id_list = []
+    regex_form1 = r"20[0-9]{2}\-00[0-9]{4}STR"
+    regex_form2 = r"STR\-000[0-9]{4}"
+    for tuple in data:
+        myname = tuple[3]
+        if tuple[3] != "Exempt" and tuple[3] != "Pending":
+            
+            if re.search(regex_form1, tuple[3]) is None and re.search(regex_form2, tuple[3]) is None:
+                listing_id_list.append(tuple[2])
+            
+
+    return listing_id_list
 
 
 def extra_credit(listing_id):
@@ -179,7 +284,6 @@ class TestCases(unittest.TestCase):
 
         # check that the third listing has one bedroom
 
-        pass
 
     def test_get_detailed_listing_database(self):
         # call get_detailed_listing_database on "html_files/mission_district_search_results.html"
