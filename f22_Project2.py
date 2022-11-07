@@ -214,7 +214,6 @@ def check_policy_numbers(data):
     regex_form1 = r"20[0-9]{2}\-00[0-9]{4}STR"
     regex_form2 = r"STR\-000[0-9]{4}"
     for tuple in data:
-        myname = tuple[3]
         if tuple[3] != "Exempt" and tuple[3] != "Pending":
             
             if re.search(regex_form1, tuple[3]) is None and re.search(regex_form2, tuple[3]) is None:
